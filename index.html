@@ -1,0 +1,722 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>乙女ゲーム「星屑のロマンス」</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+JP:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #f472b6; /* Pink 400 */
+            --primary-dark: #db2777; /* Pink 600 */
+            --bg-color: #fdf2f8; /* Pink 50 */
+        }
+        body {
+            font-family: 'Noto Serif JP', serif;
+            background-color: #111;
+            color: #333;
+            margin: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            overflow: hidden;
+            touch-action: manipulation;
+        }
+        #game-container {
+            width: 100%;
+            max-width: 800px;
+            aspect-ratio: 16 / 9;
+            background-color: var(--bg-color);
+            position: relative;
+            overflow: hidden;
+            box-shadow: 0 0 20px rgba(255,105,180,0.3);
+        }
+        @media (max-width: 800px) {
+            #game-container {
+                aspect-ratio: auto;
+                height: 100vh;
+            }
+        }
+        
+        /* Screens */
+        .screen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: none;
+            flex-direction: column;
+            background-size: cover;
+            background-position: center;
+            transition: opacity 0.5s ease;
+        }
+        .screen.active {
+            display: flex;
+        }
+
+        /* Title Screen */
+        #title-screen {
+            background: linear-gradient(135deg, #fbc2eb 0%, #a6c1ee 100%);
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+        }
+        .game-title {
+            font-size: 3rem;
+            color: white;
+            text-shadow: 0 2px 10px rgba(0,0,0,0.2);
+            margin-bottom: 2rem;
+            font-weight: 700;
+        }
+        
+        /* Game UI */
+        #scene-bg {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: linear-gradient(to bottom, #e0c3fc 0%, #8ec5fc 100%);
+            z-index: 1;
+            transition: background 1s ease;
+        }
+        #character-sprite {
+            position: absolute;
+            bottom: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: auto;
+            height: 80%;
+            max-height: 600px;
+            z-index: 2;
+            transition: opacity 0.3s ease, transform 0.3s ease;
+            opacity: 0;
+        }
+        #character-sprite.show {
+            opacity: 1;
+        }
+
+        /* Dialogue Box */
+        #dialogue-container {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 90%;
+            height: 160px;
+            background: rgba(255, 255, 255, 0.85);
+            backdrop-filter: blur(8px);
+            border: 2px solid rgba(255, 255, 255, 0.5);
+            border-radius: 12px;
+            z-index: 10;
+            padding: 20px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+            cursor: pointer;
+            display: flex;
+            flex-direction: column;
+        }
+        #speaker-name {
+            font-weight: bold;
+            color: var(--primary-dark);
+            font-size: 1.2rem;
+            margin-bottom: 8px;
+            min-height: 1.5rem;
+        }
+        #dialogue-text {
+            font-size: 1.1rem;
+            line-height: 1.6;
+            flex-grow: 1;
+        }
+        
+        /* Choices Overlay */
+        #choices-container {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.4);
+            z-index: 20;
+            display: none;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            gap: 15px;
+            backdrop-filter: blur(2px);
+        }
+        .choice-btn {
+            width: 80%;
+            max-width: 400px;
+            padding: 15px 20px;
+            background: rgba(255, 255, 255, 0.95);
+            border: 2px solid var(--primary);
+            border-radius: 30px;
+            color: var(--primary-dark);
+            font-size: 1.1rem;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+        }
+        .choice-btn:hover {
+            background: var(--primary);
+            color: white;
+            transform: scale(1.02);
+        }
+
+        /* Menu */
+        #menu-btn {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            z-index: 15;
+            background: rgba(255, 255, 255, 0.7);
+            border: none;
+            border-radius: 50%;
+            width: 40px; height: 40px;
+            font-size: 1.2rem;
+            cursor: pointer;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+        }
+        #system-menu {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(255, 255, 255, 0.9);
+            z-index: 30;
+            display: none;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            gap: 20px;
+        }
+
+        /* Common Buttons & Inputs */
+        .btn-primary {
+            background: var(--primary);
+            color: white;
+            padding: 12px 30px;
+            border-radius: 30px;
+            font-size: 1.2rem;
+            font-weight: bold;
+            box-shadow: 0 4px 15px rgba(244, 114, 182, 0.4);
+            transition: all 0.2s;
+        }
+        .btn-primary:hover {
+            background: var(--primary-dark);
+            transform: translateY(-2px);
+        }
+        .btn-secondary {
+            background: white;
+            color: #666;
+            border: 2px solid #ccc;
+            padding: 10px 25px;
+            border-radius: 30px;
+            font-weight: bold;
+        }
+        .input-name {
+            padding: 12px 20px;
+            font-size: 1.2rem;
+            border: 2px solid white;
+            border-radius: 10px;
+            background: rgba(255,255,255,0.8);
+            text-align: center;
+            width: 250px;
+            outline: none;
+        }
+        .input-name:focus {
+            border-color: var(--primary);
+            background: white;
+        }
+
+        /* Toast Notification */
+        #toast {
+            position: absolute;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0,0,0,0.7);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 20px;
+            z-index: 100;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s;
+        }
+        #toast.show {
+            opacity: 1;
+        }
+
+    </style>
+</head>
+<body>
+
+<div id="game-container">
+    
+    <!-- Title Screen -->
+    <div id="title-screen" class="screen active">
+        <h1 class="game-title">星屑のロマンス<br><span class="text-xl font-normal opacity-80">~Stardust Romance~</span></h1>
+        
+        <div class="mb-6 flex flex-col items-center">
+            <label class="text-white font-bold mb-2">主人公の名前</label>
+            <input type="text" id="player-name-input" class="input-name" value="ヒロイン" placeholder="名前を入力">
+        </div>
+
+        <div class="flex flex-col gap-4 w-64">
+            <button onclick="startGame()" class="btn-primary">初めから</button>
+            <button onclick="loadGameFromTitle()" class="btn-secondary">続きから (Load)</button>
+        </div>
+    </div>
+
+    <!-- Game Screen -->
+    <div id="game-screen" class="screen">
+        <!-- Background -->
+        <div id="scene-bg"></div>
+        
+        <!-- Character Sprite (Using Placehold.co to simulate beautiful characters based on color theme) -->
+        <img id="character-sprite" src="" alt="Character">
+        
+        <!-- Menu Button -->
+        <button id="menu-btn" onclick="openMenu()">⚙️</button>
+
+        <!-- Dialogue Container -->
+        <div id="dialogue-container" onclick="advanceStory()">
+            <div id="speaker-name"></div>
+            <div id="dialogue-text"></div>
+        </div>
+
+        <!-- Choices Overlay -->
+        <div id="choices-container">
+            <!-- Buttons dynamically generated -->
+        </div>
+
+        <!-- System Menu Overlay -->
+        <div id="system-menu">
+            <h2 class="text-2xl font-bold text-gray-800 mb-4">メニュー</h2>
+            <p class="mb-4 text-gray-600">現在の好感度<br>ハルト: <span id="aff-haruto">0</span> | レン: <span id="aff-ren">0</span></p>
+            <button class="btn-primary w-48" onclick="saveGame()">セーブ (Save)</button>
+            <button class="btn-secondary w-48" onclick="loadGame()">ロード (Load)</button>
+            <button class="btn-secondary w-48" onclick="returnToTitle()">タイトルへ戻る</button>
+            <button class="mt-4 px-6 py-2 text-gray-500 underline" onclick="closeMenu()">閉じる</button>
+        </div>
+    </div>
+
+    <!-- Toast -->
+    <div id="toast">Message</div>
+</div>
+
+<script>
+/* =========================================================================
+   Game Data & Scenario
+========================================================================= */
+
+// キャラクター定義と画像（プレースホルダーを使用してイラスト風を表現）
+const CHARACTERS = {
+    haruto: {
+        name: "ハルト",
+        color: "4A90E2", // Blue theme (Tsundere/Cool)
+        img: "https://placehold.co/400x800/2c3e50/ecf0f1?text=Haruto\n(Cool)"
+    },
+    ren: {
+        name: "レン",
+        color: "F5A623", // Gold theme (Prince/Gentle)
+        img: "https://placehold.co/400x800/f39c12/ffffff?text=Ren\n(Prince)"
+    }
+};
+
+// 背景CSSグラデーションプリセット
+const BGS = {
+    school: "linear-gradient(135deg, #fdfbfb 0%, #ebedee 100%)",
+    classroom: "linear-gradient(to right, #ffecd2 0%, #fcb69f 100%)",
+    park: "linear-gradient(120deg, #d4fc79 0%, #96e6a1 100%)",
+    night: "linear-gradient(to top, #30cfd0 0%, #330867 100%)"
+};
+
+// ストーリーデータ
+const STORY = {
+    // ---------------- 共通ルート ----------------
+    start: {
+        bg: BGS.school,
+        text: "新しい学園生活が始まった。私の名前は{name}。",
+        next: "scene1"
+    },
+    scene1: {
+        bg: BGS.school,
+        text: "放課後、ふと廊下を歩いていると、見知った顔に遭遇した。",
+        next: "scene2"
+    },
+    scene2: {
+        bg: BGS.school,
+        speaker: "ハルト",
+        sprite: "haruto",
+        text: "「おっ、お前。こんな所で何してんだよ。帰らないのか？」",
+        next: "scene3"
+    },
+    scene3: {
+        bg: BGS.school,
+        speaker: "レン",
+        sprite: "ren",
+        text: "「ハルト、そんな言い方したら彼女が怖がるだろう？ 初めまして、{name}ちゃん。」",
+        next: "choice1"
+    },
+    choice1: {
+        bg: BGS.school,
+        text: "二人に話しかけられた。私は……",
+        choices: [
+            { text: "ハルトに言い返す", target: "haruto_path1", affection: { haruto: 1 } },
+            { text: "レンに微笑み返す", target: "ren_path1", affection: { ren: 1 } }
+        ]
+    },
+    
+    // ---------------- ハルトルート分岐 1 ----------------
+    haruto_path1: {
+        bg: BGS.classroom,
+        speaker: "ハルト",
+        sprite: "haruto",
+        text: "「ふんっ、相変わらず減らず口を叩くやつだな。……まぁ、元気そうで何よりだ。」",
+        next: "common_mid"
+    },
+
+    // ---------------- レンルート分岐 1 ----------------
+    ren_path1: {
+        bg: BGS.classroom,
+        speaker: "レン",
+        sprite: "ren",
+        text: "「ふふ、可愛い笑顔だね。これからよろしくね、{name}ちゃん。」",
+        next: "common_mid"
+    },
+
+    // ---------------- 共通ルート 中盤 ----------------
+    common_mid: {
+        bg: BGS.park,
+        text: "数日後。休日に公園を歩いていると、文化祭の準備について考えることになった。",
+        next: "choice2"
+    },
+    choice2: {
+        bg: BGS.park,
+        text: "文化祭の出し物、誰に相談しよう？",
+        choices: [
+            { text: "幼馴染のハルトに相談する", target: "haruto_path2", affection: { haruto: 2 } },
+            { text: "頼りになるレン先輩に相談する", target: "ren_path2", affection: { ren: 2 } }
+        ]
+    },
+
+    // ---------------- ハルトルート分岐 2 ----------------
+    haruto_path2: {
+        bg: BGS.park,
+        speaker: "ハルト",
+        sprite: "haruto",
+        text: "「文化祭？ しょうがねーな、手伝ってやるよ。俺に任せとけ。」",
+        next: "end_branch"
+    },
+
+    // ---------------- レンルート分岐 2 ----------------
+    ren_path2: {
+        bg: BGS.park,
+        speaker: "レン",
+        sprite: "ren",
+        text: "「相談してくれて嬉しいよ。一緒に最高の文化祭にしようね。」",
+        next: "end_branch"
+    },
+
+    // ---------------- エンディング分岐判定 ----------------
+    end_branch: {
+        bg: BGS.night,
+        text: "そして、文化祭当日……（※好感度により結末が変化します）",
+        action: function() {
+            // 好感度計算による分岐
+            if (state.affection.haruto >= 3) {
+                return "haruto_good_end";
+            } else if (state.affection.ren >= 3) {
+                return "ren_good_end";
+            } else if (state.affection.haruto > state.affection.ren) {
+                return "haruto_normal_end";
+            } else {
+                return "ren_normal_end";
+            }
+        }
+    },
+
+    // ---------------- エンディング群 ----------------
+    haruto_good_end: {
+        bg: BGS.night,
+        speaker: "ハルト",
+        sprite: "haruto",
+        text: "「お前といると、退屈しないな。……これからも、ずっと隣にいろよ。」\n\n【ハルト：Happy Ending】",
+        next: "title" // タイトルへ戻る特殊処理
+    },
+    haruto_normal_end: {
+        bg: BGS.night,
+        speaker: "ハルト",
+        sprite: "haruto",
+        text: "「文化祭、楽しかったな。また明日、学校でな。」\n\n【ハルト：Normal Ending】",
+        next: "title"
+    },
+    ren_good_end: {
+        bg: BGS.night,
+        speaker: "レン",
+        sprite: "ren",
+        text: "「君の笑顔は、星空よりも綺麗だ。僕だけの特別になってくれないか？」\n\n【レン：Happy Ending】",
+        next: "title"
+    },
+    ren_normal_end: {
+        bg: BGS.night,
+        speaker: "レン",
+        sprite: "ren",
+        text: "「今日は本当にお疲れ様。気をつけて帰るんだよ。」\n\n【レン：Normal Ending】",
+        next: "title"
+    }
+};
+
+
+/* =========================================================================
+   Game Engine & State Management
+========================================================================= */
+
+let state = {
+    playerName: "ヒロイン",
+    currentSceneId: "start",
+    affection: {
+        haruto: 0,
+        ren: 0
+    }
+};
+
+let typeWriterInterval = null;
+let isTyping = false;
+let currentFullText = "";
+const SAVE_KEY = "stardust_romance_save";
+
+// DOM Elements
+const elTitleScreen = document.getElementById("title-screen");
+const elGameScreen = document.getElementById("game-screen");
+const elSceneBg = document.getElementById("scene-bg");
+const elCharacterSprite = document.getElementById("character-sprite");
+const elSpeakerName = document.getElementById("speaker-name");
+const elDialogueText = document.getElementById("dialogue-text");
+const elChoicesContainer = document.getElementById("choices-container");
+const elSystemMenu = document.getElementById("system-menu");
+const elToast = document.getElementById("toast");
+const elPlayerNameInput = document.getElementById("player-name-input");
+
+function showToast(message) {
+    elToast.textContent = message;
+    elToast.classList.add("show");
+    setTimeout(() => {
+        elToast.classList.remove("show");
+    }, 2000);
+}
+
+function startGame() {
+    let name = elPlayerNameInput.value.trim();
+    if(name === "") name = "ヒロイン";
+    
+    // 初期化
+    state = {
+        playerName: name,
+        currentSceneId: "start",
+        affection: { haruto: 0, ren: 0 }
+    };
+
+    elTitleScreen.classList.remove("active");
+    elGameScreen.classList.add("active");
+    
+    loadScene(state.currentSceneId);
+}
+
+function loadScene(sceneId) {
+    if (sceneId === "title") {
+        returnToTitle();
+        return;
+    }
+
+    const scene = STORY[sceneId];
+    if (!scene) {
+        console.error("Scene not found: " + sceneId);
+        return;
+    }
+
+    state.currentSceneId = sceneId;
+    elChoicesContainer.style.display = "none";
+    elDialogueText.innerHTML = "";
+
+    // アクション(分岐判定)がある場合
+    if (scene.action && typeof scene.action === "function") {
+        const nextSceneId = scene.action();
+        loadScene(nextSceneId);
+        return;
+    }
+
+    // 背景設定
+    if (scene.bg) {
+        elSceneBg.style.background = scene.bg;
+    }
+
+    // キャラクター設定
+    if (scene.sprite && CHARACTERS[scene.sprite]) {
+        elCharacterSprite.src = CHARACTERS[scene.sprite].img;
+        elCharacterSprite.classList.add("show");
+    } else {
+        elCharacterSprite.classList.remove("show");
+    }
+
+    // 話者名設定
+    if (scene.speaker) {
+        elSpeakerName.textContent = scene.speaker;
+    } else {
+        elSpeakerName.textContent = "";
+    }
+
+    // テキスト設定（名前の置換）
+    let text = scene.text || "";
+    currentFullText = text.replace(/{name}/g, state.playerName);
+    
+    // 選択肢があるか？
+    if (scene.choices && scene.choices.length > 0) {
+        buildChoices(scene.choices);
+        startTyping(currentFullText, true); // 選択肢表示フラグ
+    } else {
+        startTyping(currentFullText, false);
+    }
+}
+
+function startTyping(text, showChoicesAfter) {
+    if (typeWriterInterval) clearInterval(typeWriterInterval);
+    isTyping = true;
+    elDialogueText.innerHTML = "";
+    let i = 0;
+    
+    typeWriterInterval = setInterval(() => {
+        // 改行コードを <br> に変換しつつ1文字ずつ追加
+        if (text.charAt(i) === '\n') {
+            elDialogueText.innerHTML += '<br>';
+        } else {
+            elDialogueText.innerHTML += text.charAt(i);
+        }
+        i++;
+        if (i >= text.length) {
+            clearInterval(typeWriterInterval);
+            isTyping = false;
+            if (showChoicesAfter) {
+                elChoicesContainer.style.display = "flex";
+            }
+        }
+    }, 30); // 表示速度
+}
+
+function finishTyping() {
+    if (typeWriterInterval) clearInterval(typeWriterInterval);
+    elDialogueText.innerHTML = currentFullText.replace(/\n/g, '<br>');
+    isTyping = false;
+    
+    const scene = STORY[state.currentSceneId];
+    if (scene.choices && scene.choices.length > 0) {
+        elChoicesContainer.style.display = "flex";
+    }
+}
+
+function advanceStory() {
+    // 選択肢表示中は進めない
+    if (elChoicesContainer.style.display === "flex") return;
+
+    if (isTyping) {
+        // タイプライター演出をスキップして全表示
+        finishTyping();
+        return;
+    }
+
+    const scene = STORY[state.currentSceneId];
+    if (scene.next) {
+        loadScene(scene.next);
+    }
+}
+
+function buildChoices(choices) {
+    elChoicesContainer.innerHTML = "";
+    choices.forEach(choice => {
+        const btn = document.createElement("button");
+        btn.className = "choice-btn";
+        btn.textContent = choice.text;
+        btn.onclick = (e) => {
+            e.stopPropagation(); // 枠へのクリックイベント伝播を防ぐ
+            makeChoice(choice);
+        };
+        elChoicesContainer.appendChild(btn);
+    });
+}
+
+function makeChoice(choice) {
+    // 好感度加算
+    if (choice.affection) {
+        for (let chara in choice.affection) {
+            state.affection[chara] += choice.affection[chara];
+        }
+    }
+    elChoicesContainer.style.display = "none";
+    loadScene(choice.target);
+}
+
+/* =========================================================================
+   System Menu & Save/Load
+========================================================================= */
+
+function openMenu() {
+    elSystemMenu.style.display = "flex";
+    document.getElementById("aff-haruto").textContent = state.affection.haruto;
+    document.getElementById("aff-ren").textContent = state.affection.ren;
+}
+
+function closeMenu() {
+    elSystemMenu.style.display = "none";
+}
+
+function saveGame() {
+    try {
+        localStorage.setItem(SAVE_KEY, JSON.stringify(state));
+        showToast("セーブしました");
+        closeMenu();
+    } catch (e) {
+        showToast("セーブに失敗しました");
+    }
+}
+
+function loadGame() {
+    try {
+        const savedData = localStorage.getItem(SAVE_KEY);
+        if (savedData) {
+            state = JSON.parse(savedData);
+            closeMenu();
+            loadScene(state.currentSceneId);
+            showToast("ロードしました");
+        } else {
+            showToast("セーブデータがありません");
+        }
+    } catch (e) {
+        showToast("ロードに失敗しました");
+    }
+}
+
+function loadGameFromTitle() {
+    try {
+        const savedData = localStorage.getItem(SAVE_KEY);
+        if (savedData) {
+            state = JSON.parse(savedData);
+            elTitleScreen.classList.remove("active");
+            elGameScreen.classList.add("active");
+            loadScene(state.currentSceneId);
+            showToast("ロードしました");
+        } else {
+            showToast("セーブデータがありません");
+        }
+    } catch (e) {
+        showToast("ロードに失敗しました");
+    }
+}
+
+function returnToTitle() {
+    closeMenu();
+    elGameScreen.classList.remove("active");
+    elTitleScreen.classList.add("active");
+    elPlayerNameInput.value = state.playerName; // 名前を復元
+}
+
+</script>
+</body>
+</html>

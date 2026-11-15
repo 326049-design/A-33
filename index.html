@@ -126,6 +126,7 @@
             font-size: 1.1rem;
             line-height: 1.6;
             flex-grow: 1;
+            white-space: pre-wrap;
         }
         
         /* Choices Overlay */
@@ -584,12 +585,7 @@ function startTyping(text, showChoicesAfter) {
     let i = 0;
     
     typeWriterInterval = setInterval(() => {
-        // 改行コードを <br> に変換しつつ1文字ずつ追加
-        if (text.charAt(i) === '\n') {
-            elDialogueText.innerHTML += '<br>';
-        } else {
-            elDialogueText.innerHTML += text.charAt(i);
-        }
+        elDialogueText.textContent += text.charAt(i);
         i++;
         if (i >= text.length) {
             clearInterval(typeWriterInterval);
@@ -603,7 +599,7 @@ function startTyping(text, showChoicesAfter) {
 
 function finishTyping() {
     if (typeWriterInterval) clearInterval(typeWriterInterval);
-    elDialogueText.innerHTML = currentFullText.replace(/\n/g, '<br>');
+    elDialogueText.textContent = currentFullText;
     isTyping = false;
     
     const scene = STORY[state.currentSceneId];
